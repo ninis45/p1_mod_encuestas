@@ -63,6 +63,16 @@ class Admin_Asignacion extends Admin_Controller {
 						'label' => 'Aviso de privacidad',
 						'rules' => 'trim'
 						),
+                    array(
+						'field' => 'comodin',
+						'label' => 'Comodin',
+						'rules' => 'trim'
+						),
+                    array(
+						'field' => 'comodin_valor',
+						'label' => 'Valor comodin',
+						'rules' => 'trim'
+						),
                     
         );
     }

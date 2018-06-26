@@ -65,9 +65,15 @@ class Encuestas_front extends Public_Controller
           $this->template->set_breadcrumb('Encuestas','encuestas');
     }
     
+    function load($id)
+    {
+        
+    }
+    
     //Llenado a traves de asignacion
     public function llenado($id='')
     {
+        
         
         
         $encuesta = false;
@@ -79,14 +85,28 @@ class Encuestas_front extends Public_Controller
        
         if(is_string($id))
         {
+             
             $asignacion = $this->asignacion_m->get_by_slug($id) or show_404();
             
+             
             
         }
         
         
         $cuestionario = $this->cuestionario_m
                                     ->get($asignacion->id_cuestionario) OR show_error('No existe el cuestionario');
+        if($cuestionario)
+        {
+            
+            $cuestionario->respuestas = $this->db->where('id_cuestionario',$asignacion->id_cuestionario)
+                                        ->get('cat_pregunta_opciones')->result_array();
+            $cuestionario->tipo = $this->db->select('tabla')
+                                       ->where('id',$asignacion->id_cuestionario)
+                                       ->get('default_cat_cuestionarios')->result_array();
+            $cuestionario->tipo = $cuestionario->tipo['0']['tabla'];
+            
+        }
+        
                                     
         if($cuestionario->publicar == 0)
         {
@@ -109,7 +129,7 @@ class Encuestas_front extends Public_Controller
                 
                 redirect('encuestas/llenado/'.$id);
         }
-        
+       
         
         if($auth)
         {
@@ -120,6 +140,7 @@ class Encuestas_front extends Public_Controller
             if($asignacion->auth_by == 'codigo')
             {
                 $encuesta = $this->encuesta_m->get_by('codigo',$auth);
+                
             }
             else
             {
@@ -149,7 +170,7 @@ class Encuestas_front extends Public_Controller
                      
                      $encuesta->{$asignacion->table} = $table;
                 }                       
-                   
+                    
             }
            
             
@@ -169,12 +190,11 @@ class Encuestas_front extends Public_Controller
         }
         
         
-        
         //Extraemos las preguntas de la encuesta
+        
         $fields = $this->encuesta->set_values($this->input->post('pregunta'))
-                            ->build_form($asignacion->id_cuestionario);
-                            
-                         
+                            ->build_form($asignacion->id_cuestionario,$cuestionario->tabla);
+                
         if($fields)
         {
             foreach($fields as $id_pregunta => $field)
@@ -207,9 +227,11 @@ class Encuestas_front extends Public_Controller
             }
             if($this->encuesta_m->update($encuesta->id,$data))
             {
+                
                 Encuesta::SaveResource($asignacion,$encuesta->table_id,$this->input->post($asignacion->table));
                 Encuesta::SaveValues($encuesta->id,$this->input->post('pregunta'));
                 $this->session->set_flashdata('success',lang('encuesta:save_success'));
+                
             }
             else
             {
@@ -224,7 +246,8 @@ class Encuestas_front extends Public_Controller
             $encuesta = (Object)$_POST;
          }
         
-         
+        
+       // print_r(array_values(array_values($fields)[0])[2]);
          $this->template->title($this->module_details['name'])
                     ->set_layout('basic.html')
                     ->append_css('module::encuesta.css')

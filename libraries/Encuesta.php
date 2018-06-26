@@ -1,18 +1,15 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
-
-
 class Encuesta
 {
 	public $values = array();
-
 	// --------------------------------------------------------------------------
-
     public function __construct()
     {
         ci()->load->helper('form');
         ci()->load->model(array(
             'cuestionarios/pregunta_m',
-            'encuestas/encuesta_m'
+            'encuestas/encuesta_m',
+            'encuestas/opciones_m'
         ));
     }
     public function set_values($values = array())
@@ -101,7 +98,6 @@ class Encuesta
         ci()->db->where('id_encuesta',$id_encuesta)
                 ->delete('encuesta_respuestas');
                 
-                
         if(empty($preguntas) == false)
         {
             foreach($preguntas as $id_pregunta=>$pregunta)
@@ -123,58 +119,174 @@ class Encuesta
     }
     
     /******Genera el cuestionario de preguntas dinamicas******/
-    public  function build_form($id_cuestionario,$return_html=false)
+    public  function build_form($id_cuestionario,$tipo=1,$return_html=false)
     {
-        $data = array();
+       
+        //if(empty($tipo)==true && $tipo != 1)
+        //{
+            $data = array();
         
-        $preguntas = ci()->pregunta_m->select('*,cat_preguntas.id AS id_pregunta')
-                        ->where('id_cuestionario',$id_cuestionario)
-                        ->join('cat_pregunta_opciones','cat_pregunta_opciones.id_pregunta = cat_preguntas.id','LEFT')
+            $preguntas = ci()->pregunta_m->select('*,cat_preguntas.id AS id_pregunta')
+                        ->where('cat_preguntas.id_cuestionario',$id_cuestionario)
+                        //->where('cat_preguntas.titulo <> \'\'',NULL)
+                        ->join('cat_pregunta_opciones','cat_pregunta_opciones.id_pregunta = cat_preguntas.id','LEFT')                
+                        ->order_by('ordering')
+                        ->get_all();                
+            
+            $id_pregunta = 0; 
+            $tipo_pregunta = '';
+            $opciones    = array();           
+            foreach($preguntas as $pregunta)
+            {
+                //if(!$pregunta->respuesta)continue;
+                
+                if($tipo==1 && $id_pregunta==0){
+                    $id_pregunta = $pregunta->id_pregunta;
+                    
+                    $tipo_pregunta = $pregunta->tipo;
+                }
+                    
+                if($id_pregunta==$pregunta->id_pregunta)
+                {
+                    
+                    $opciones[] = $pregunta->respuesta;
+                }
+                if(!isset($data[$pregunta->id_pregunta]))
+                {
+                    $data[$pregunta->id_pregunta] = array(
+                        'id'       => $pregunta->id_pregunta,
+                        'titulo'   => $pregunta->titulo,
+                        'opciones' => array(),
+                        'tipo'     => $pregunta->tipo,
+                        'obligatorio' => $pregunta->obligatorio,
+                        'muestra' => $pregunta->muestra,
+                        'orden'   => $pregunta->ordering,
+                        'html'    => '',
+                        'rules'   => 'trim'.($pregunta->obligatorio?'|required':'')
+                        
+                    );
+                  }  
+                    switch($pregunta->tipo)
+                    {
+                        case 'text' :
+                            $html = form_input('pregunta['.$pregunta->id_pregunta.'][]',(empty($this->values[$pregunta->id_pregunta])==false?$this->values[$pregunta->id_pregunta][0]:null),'class="form-control"');
+                        break;
+                        case 'radio':
+                            $html = form_radio('pregunta['.$pregunta->id_pregunta.'][]',$pregunta->respuesta,empty($this->values[$pregunta->id_pregunta])==false && in_array($pregunta->respuesta,$this->values[$pregunta->id_pregunta]));
+                        break;
+                        case 'checkbox':
+                            $html = form_checkbox('pregunta['.$pregunta->id_pregunta.'][]',$pregunta->respuesta,empty($this->values[$pregunta->id_pregunta])==false && in_array($pregunta->respuesta,$this->values[$pregunta->id_pregunta]));
+                        break;
+                    }
+                    
+                    if($pregunta->respuesta || $pregunta->tipo=='text'){
+                        $data[$pregunta->id_pregunta]['opciones'][] = array(
+                        
+                            'input' =>   $html,
+                            'label' =>   $pregunta->respuesta
+                            
+                        );
+                    }
+                    
+                
+            }
+           
+            
+            //Asigna las repuestas a las demas preguntas de la primera pregunta
+            if($id_pregunta)
+            {
+                foreach($data AS $id=>$preguntas)
+                {
+                    
+                    //echo $id_pregunta;
+                    if($id != $id_pregunta)
+                    {
+                        
+                        foreach($opciones AS $opcion)
+                        {
+                            switch($tipo_pregunta)
+                            {
+                                case 'text' :
+                                    $html = form_input('pregunta['.$id.'][]',(empty($this->values[$pregunta->id_pregunta])==false?$this->values[$id][0]:null),'class="form-control"');
+                                break;
+                                case 'radio':
+                                    $html = form_radio('pregunta['.$id.'][]',$opcion,empty($this->values[$id])==false && in_array($opcion,$this->values[$id]));
+                                break;
+                                case 'checkbox':
+                                    $html = form_checkbox('pregunta['.$id.'][]',$opcion,empty($this->values[$id])==false && in_array($opcion,$this->values[$id]));
+                                break;
+                            }
+                           //echo 'Pregunta = '.$id.'<br/>';
+                           $data[$id]['opciones'][] = array(
+                                
+                                    'input' =>   $html,
+                                    'label' =>   $opcion
+                                    
+                           );
+                            
+                        }
+                   }
+                }
+            }
+             
+       // return $data;            
+           
+        
+        //}
+        
+            /*else
+            {
+                $data = array();
+                $preguntas_tabla = ci()->pregunta_m->select('*,cat_preguntas.id AS id_pregunta')
+                        ->where('cat_preguntas.id_cuestionario',$id_cuestionario)                
                         ->order_by('ordering')
                         ->get_all();
-                        
-        foreach($preguntas as $pregunta)
-        {
-            if(!isset($data[$pregunta->id_pregunta]))
-            {
-                $data[$pregunta->id_pregunta] = array(
-                    'id'       => $pregunta->id_pregunta,
-                    'titulo'   => $pregunta->titulo,
-                    'opciones' => array(),
-                    'tipo'     => $pregunta->tipo,
-                    'obligatorio' => $pregunta->obligatorio,
-                    'muestra' => $pregunta->muestra,
-                    'orden'   => $pregunta->ordering,
-                    'html'    => '',
-                    'rules'   => 'trim'.($pregunta->obligatorio?'|required':'')
-                    
-                );
-              }  
-                switch($pregunta->tipo)
-                {
-                    case 'text' :
-                        $html = form_input('pregunta['.$pregunta->id_pregunta.'][]',(empty($this->values[$pregunta->id_pregunta])==false?$this->values[$pregunta->id_pregunta][0]:null),'class="form-control"');
-                    break;
-                    case 'radio':
-                        $html = form_radio('pregunta['.$pregunta->id_pregunta.'][]',$pregunta->respuesta,empty($this->values[$pregunta->id_pregunta])==false && in_array($pregunta->respuesta,$this->values[$pregunta->id_pregunta]));
-                    break;
-                    case 'checkbox':
-                        $html = form_checkbox('pregunta['.$pregunta->id_pregunta.'][]',$pregunta->respuesta,empty($this->values[$pregunta->id_pregunta])==false && in_array($pregunta->respuesta,$this->values[$pregunta->id_pregunta]));
-                    break;
-                }
-                $data[$pregunta->id_pregunta]['opciones'][] = array(
-                
-                    'input' =>   $html,
-                    'label' =>   $pregunta->respuesta
-                    
-                );;
-                
+                    $base_where = array(         
+                     'cat_preguntas.id_cuestionario' => $id_cuestionario,
+                     'default_cat_preguntas.tipo' => 'table' 
+                        );
+                     
+                    $respuestas = ci()->opciones_m->distinct()->select('respuesta ')
+                            ->where($base_where)
+                            ->join('cat_preguntas','cat_pregunta_opciones.id_cuestionario = cat_preguntas.id_cuestionario','LEFT')
+                            ->get_all();
             
+                foreach($preguntas_tabla as $pregunta)
+                {
+               
+                            if(!isset($data[$pregunta->id_pregunta]))
+                                 {
+                                     $data[$pregunta->id_pregunta] = array(
+                                    'id'       => $pregunta->id_pregunta,
+                                    'titulo'   => $pregunta->titulo,
+                                    'opciones' => array(),
+                                    'tipo'     => $pregunta->tipo,
+                                    'obligatorio' => $pregunta->obligatorio,
+                                    'muestra' => $pregunta->muestra,
+                                    'orden'   => $pregunta->ordering,
+                                    'html'    => '',
+                                    'rules'   => 'trim'.($pregunta->obligatorio?'|required':'')
+                                      );
+                                }  
+                            foreach($respuestas as $respuesta)
+                            {
+                               
+                            $html = form_radio('pregunta['.$pregunta->id_pregunta.'][]',$respuesta->respuesta,empty($this->values[$pregunta->id_pregunta])==false && in_array($respuesta->respuesta,$this->values[$pregunta->id_pregunta]));
+                       
+                             $data[$pregunta->id_pregunta]['opciones'][] = array
+                            (
+                                'input' =>   $html
+                            );
+                             
+                            }  
+                }
+               
+           
+        }*/
+            //print_r($data);
+            return $data;
         }
-        
-        
-        return $data;
-    }
+      
     
     
 }

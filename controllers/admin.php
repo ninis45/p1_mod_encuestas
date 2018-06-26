@@ -20,7 +20,6 @@ class Admin extends Admin_Controller {
 						'label' => 'Activo',
 						'rules' => 'trim|required'
                      ),
-                     
 					 'edad'=>array(
 						'field' => 'edad',
 						'label' => 'Edad',

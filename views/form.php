@@ -89,6 +89,7 @@
                                     <?php }?>
                                 </div>
                             <?php endforeach;?>
+                            <?php if($asignacion->table_fields ){ ?>
                             <?php foreach($asignacion->table_fields as $campo): ?>
                                 <?php if($campo->tipo!='hidden'){?>
                                 <label><?=$campo->nombre?></label>
@@ -120,6 +121,7 @@
                                     
                                 <?php }?>
                             <?php endforeach;?>
+                            <?php }?>
                             <hr />
                             <div class="form-actions text-center">
                                 <a class="btn btn-color-grey-light" href="<?=base_url($this->uri->uri_string())?>">Cancelar</a>
@@ -129,7 +131,9 @@
                                 <div class="clearfix"></div>
                             </div>
                         </div>
+
                         <div class="tab-pane" id="tab-form">
+                            <?php if($cuestionario->tabla != 1): ?>
                             <?php $index = 1; ?>
                             <?php foreach($fields as $id_pregunta=>$field):?>
                                 <div class="form-group">
@@ -145,7 +149,7 @@
                                             echo '<div class="radio">';
                                             
                                             foreach($field['opciones'] as $opcion):
-                                                echo '<label>'.$opcion['input'].$opcion['label'].'</label> ';
+                                                echo '<label title="Marca si es '.$field['titulo'].'">'.$opcion['input'].$opcion['label'].'</label> ';
                                             endforeach;
                                             
                                             echo '</div>';
@@ -177,7 +181,58 @@
                                 </div>
                                 <?php $index++; ?>
                             <?php endforeach;?>
+
+                            <?php else:?> <!--Encuesta tabla -->
+                        <table class="table table-hover" style="font-size: 12px;" >
+                                <thead>
+                                    <tr>
+                                      <th></th>  
+
+                                      <?php foreach($cuestionario->respuestas as $item):?>
+                                      <th width="10%" class="text-center"><?=$item['respuesta']?></th>
+                                      <?php endforeach;?>              
+                                    </tr>
+                                </thead>
+                                
+                                <tbody>
+                                      
+                                    <?php $index = 1; ?>
+                                    <?php foreach($fields as $id_pregunta=>$field):?>
+
+                                <tr>  
+
+                                 <td> <label class="<?=form_error('pregunta['.$id_pregunta.']')?'text-danger':''?>"><?=$index?>.-<?=$field['titulo']?></label>
+                                 </td>
+
+                                     
+
+                                      
+                                       <?php echo '<div class="radio">';
+                                            
+                                            foreach($field['opciones'] as $opcion):
+                                                echo ' <td width="10%" class="text-center"> <label title="Marcar si es '.$opcion['label'].'">'.$opcion['input'].'</label>  </td>';
+                                            endforeach;
+                                            
+                                            echo '</div>';
+                                        ?>
+
+
+                                     
+
+                                      
+                                            
+                                
+
+                                </tr>
+                                <?php $index++; ?>
+                                <?php endforeach;?>
+                                
+                                </tbody>
                             
+                        </table>
+
+                            <?php endif?>
+
                             <hr />
                             <div class="form-actions text-center">
                                 <a class="btn btn-color-grey-light" onclick="$('#tabs li:eq(0) a').tab('show')" href="#">Regresar</a>
